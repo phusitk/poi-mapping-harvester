@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+  <%- include('partials/head', { title }) %>
+</head>
+<body class="h-full flex flex-col">
+
+  <!-- ── Top navigation ───────────────────────────────────────────────────── -->
+  <header class="bg-white shadow-sm ring-1 ring-gray-200 shrink-0">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="flex h-14 items-center justify-between">
+
+        <!-- Brand -->
+        <span class="text-sm font-semibold tracking-wide text-gray-800">
+          POI Mapping Platform
+        </span>
+
+        <!-- User + logout -->
+        <div class="flex items-center gap-4">
+          <span class="hidden sm:block text-sm text-gray-500">
+            <span class="font-medium text-gray-700"><%= user.username %></span>
+            <span class="ml-1 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500"><%= user.role %></span>
+          </span>
+
+          <form method="POST" action="/auth/logout">
+            <button
+              type="submit"
+              class="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600
+                     border border-gray-300 hover:bg-gray-50 hover:text-gray-900
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
+                     transition-colors duration-150"
+            >
+              Sign out
+            </button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Main content ─────────────────────────────────────────────────────── -->
+  <main class="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Flash -->
+    <% if (flash && flash.message) { %>
+      <div class="mb-6">
+        <%- include('partials/flash', { flash }) %>
+      </div>
+    <% } %>
+
+    <!-- Page heading -->
+    <div class="mb-8">
+      <h1 class="text-xl font-bold text-gray-900">Dashboard</h1>
+      <p class="mt-1 text-sm text-gray-500">Welcome back, <%= user.username %>.</p>
+    </div>
+
+    <!-- Quick-action cards -->
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+
+      <!-- POI Jobs -->
+      <div class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
+        <div class="flex items-center gap-3 mb-3">
+          <span class="text-2xl" aria-hidden="true">🗺️</span>
+          <h2 class="text-sm font-semibold text-gray-800">POI Jobs</h2>
+        </div>
+        <p class="text-xs text-gray-400">Manage and monitor harvesting jobs.</p>
+        <a
+          href="<%= appUrl %>"
+          class="mt-4 inline-block text-xs font-medium text-blue-600 hover:text-blue-700"
+        >
+          Open app →
+        </a>
+      </div>
+
+      <!-- Areas -->
+      <div class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
+        <div class="flex items-center gap-3 mb-3">
+          <span class="text-2xl" aria-hidden="true">📐</span>
+          <h2 class="text-sm font-semibold text-gray-800">Areas</h2>
+        </div>
+        <p class="text-xs text-gray-400">Define and manage geographic areas.</p>
+        <a
+          href="<%= appUrl %>"
+          class="mt-4 inline-block text-xs font-medium text-blue-600 hover:text-blue-700"
+        >
+          Open app →
+        </a>
+      </div>
+
+      <!-- Account -->
+      <div class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
+        <div class="flex items-center gap-3 mb-3">
+          <span class="text-2xl" aria-hidden="true">🔑</span>
+          <h2 class="text-sm font-semibold text-gray-800">Account</h2>
+        </div>
+        <p class="text-xs text-gray-400">Update your password.</p>
+        <a
+          href="/change-password"
+          class="mt-4 inline-block text-xs font-medium text-blue-600 hover:text-blue-700"
+        >
+          Change password →
+        </a>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ── Session keepalive ────────────────────────────────────────────────── -->
+  <!--
+    Pings /auth/keepalive every 30 minutes.
+    Keeps long-running POI harvesting sessions alive without user interaction.
+    Stops automatically once the absolute 8-hour timeout is near.
+  -->
+  <script>
+    (function () {
+      const PING_INTERVAL_MS  = 30 * 60 * 1000   // 30 min
+      const MAX_SESSION_MS    =  8 * 60 * 60 * 1000  // 8 h (absolute timeout)
+      const startedAt         = Date.now()
+
+      async function ping () {
+        if (Date.now() - startedAt >= MAX_SESSION_MS) return
+
+        try {
+          const res = await fetch('/auth/keepalive', {
+            method     : 'POST',
+            credentials: 'same-origin',
+            headers    : { 'Content-Type': 'application/json' },
+          })
+
+          if (res.status === 401) {
+            // Session expired — reload to trigger requireAuth redirect to /login.
+            window.location.reload()
+          }
+        } catch (_) {
+          // Network error — silently skip, browser will handle on next navigation.
+        }
+      }
+
+      setInterval(ping, PING_INTERVAL_MS)
+    })()
+  </script>
+
+</body>
+</html>

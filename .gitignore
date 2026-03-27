@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+server/node_modules/
+
+# Next.js build output
+.next/
+out/
+build/
+dist/
+
+# Environment files (contain secrets — NEVER commit these)
+.env
+.env.local
+.env.*.local
+server/.env
+server/.env.*
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Claude Code local settings
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Coverage
+coverage/

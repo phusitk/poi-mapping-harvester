@@ -1,0 +1,32 @@
+<%
+/**
+ * Flash message partial.
+ * Expects `flash` to be available in scope:  { type: 'error'|'success'|'info', message: string }
+ * Passed from res.locals (set by app.js flash middleware).
+ */
+const _flashStyles = {
+  error  : 'bg-red-50 border-red-400 text-red-800',
+  success: 'bg-green-50 border-green-400 text-green-800',
+  info   : 'bg-blue-50 border-blue-400 text-blue-800',
+}
+const _flashIcons = {
+  error  : '✕',
+  success: '✓',
+  info   : 'ℹ',
+}
+%>
+<% if (flash && flash.message) { %>
+  <%
+    const _type  = ['error','success','info'].includes(flash.type) ? flash.type : 'info'
+    const _style = _flashStyles[_type]
+    const _icon  = _flashIcons[_type]
+  %>
+  <div
+    role="alert"
+    aria-live="polite"
+    class="flex items-start gap-3 rounded-md border px-4 py-3 text-sm <%= _style %>"
+  >
+    <span class="mt-0.5 shrink-0 font-bold"><%= _icon %></span>
+    <span><%= flash.message %></span>
+  </div>
+<% } %>

@@ -1,0 +1,102 @@
+// =============================================================================
+// Prisma Schema — POI Mapping Platform Auth Module
+// Database: MySQL (InnoDB, utf8mb4_unicode_ci)
+// Managed tables: users, audit_logs
+//
+// SESSION TABLE NOTE:
+//   The `sessions` table is NOT managed by Prisma. It is created and owned
+//   exclusively by `express-mysql-session`. Do not add a Session model here.
+//   Schema created by express-mysql-session:
+//
+//     CREATE TABLE IF NOT EXISTS `sessions` (
+//       `session_id`  varchar(128) COLLATE utf8mb4_bin NOT NULL,
+//       `expires`     int(11) unsigned NOT NULL,
+//       `data`        mediumtext COLLATE utf8mb4_bin,
+//       PRIMARY KEY (`session_id`)
+//     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+//
+//   Ensure the DB user has CREATE TABLE privilege on first run so the store
+//   can bootstrap itself (or pre-create the table manually with the DDL above
+//   and set `createDatabaseTable: false` in the MySQLStore options).
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// USERS
+// =============================================================================
+model User {
+  id                  String    @id @default(uuid()) @db.Char(36)
+  username            String    @unique @db.VarChar(50)
+
+  /// Argon2id hash. Never store plaintext. Min length enforced in service layer.
+  password_hash       String    @db.VarChar(255)
+
+  /// All current users are 'admin'. Field retained for future role expansion.
+  role                String    @default("admin") @db.VarChar(50)
+
+  /// Forces redirect to /change-password before any protected route is accessible.
+  must_change_password Boolean  @default(true)
+
+  /// Soft-delete / account lock without destroying audit history.
+  is_active           Boolean   @default(true)
+
+  last_login_at       DateTime? @db.DateTime(0)
+  created_at          DateTime  @default(now()) @db.DateTime(0)
+  updated_at          DateTime  @updatedAt @db.DateTime(0)
+
+  audit_logs          AuditLog[]
+
+  @@index([username])
+  @@index([is_active])
+  @@map("users")
+}
+
+// =============================================================================
+// AUDIT LOGS
+// =============================================================================
+
+/// Valid values for the action field. Kept as a comment (not enum) because
+/// MySQL enums are painful to migrate; validate in the service layer instead.
+///
+///   LOGIN_SUCCESS | LOGIN_FAILED | LOGOUT | CHANGE_PASSWORD
+///
+model AuditLog {
+  /// BIGINT AUTO_INCREMENT — high write volume, UUID overhead not justified here.
+  id          BigInt    @id @default(autoincrement())
+
+  /// Nullable: LOGIN_FAILED events may have no resolved user (unknown username).
+  user_id     String?   @db.Char(36)
+
+  /// Denormalised username snapshot. Preserves audit trail if the user row is
+  /// ever deleted or username is changed. Do not rely on the relation for reporting.
+  username    String?   @db.VarChar(50)
+
+  /// One of: LOGIN_SUCCESS, LOGIN_FAILED, LOGOUT, CHANGE_PASSWORD
+  action      String    @db.VarChar(50)
+
+  /// IPv4 (15) or IPv6 (39) — 45 chars covers IPv4-mapped IPv6 ::ffff:0.0.0.0
+  ip_address  String?   @db.VarChar(45)
+
+  user_agent  String?   @db.Text
+
+  /// Optional structured context: e.g. { "reason": "bad_password", "attempt": 3 }
+  metadata    Json?
+
+  created_at  DateTime  @default(now()) @db.DateTime(0)
+
+  user        User?     @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id])
+  @@index([action])
+  @@index([created_at(sort: Desc)])
+  @@index([username])
+  @@map("audit_logs")
+}
